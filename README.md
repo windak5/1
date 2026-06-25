@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'chat_room_screen.dart';
 
+
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
@@ -9,13 +10,16 @@ class ChatsScreen extends StatefulWidget {
 }
 
 class _ChatsScreenState extends State<ChatsScreen> {
-  final List<Map<String, dynamic>> _spaceChats = [
+  final TransformationController _transformationController = TransformationController();
+
+    // Статические списки сохраняют координаты в памяти при переключении вкладок
+  static final List<Map<String, dynamic>> _spaceChats = [
     {'name': 'Павел Дуров', 'lastMessage': 'Классный мессенджер получается!', 'x': 250.0, 'y': 300.0},
     {'name': 'Matrix Новости', 'lastMessage': 'Протокол обновлен', 'x': 700.0, 'y': 250.0},
     {'name': 'Разработка чата', 'lastMessage': 'Flutter работает идеально', 'x': 450.0, 'y': 550.0},
   ];
 
-  final List<Map<String, dynamic>> _zones = [
+  static final List<Map<String, dynamic>> _zones = [
     {
       'id': 1,
       'title': 'Работа',
@@ -27,6 +31,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
       'isEditing': false,
     },
   ];
+
 
     String _getInitials(String name) {
     if (name.isEmpty) return '';
@@ -255,19 +260,43 @@ class _ChatsScreenState extends State<ChatsScreen> {
       backgroundColor: const Color(0xFF111823),
       body: Stack(
         children: [
+                    // Попробуйте этот вариант вместо предыдущего контейнера сетки
+          Positioned.fill(
+            child: SizedBox(
+              width: 4000,
+              height: 4000,
+              child: CustomPaint(
+                painter: DotGridPainter(
+                  // Сделаем цвет временно ярче (0.4 вместо 0.15), чтобы точно её увидеть
+                  dotColor: const Color(0xFF2F3E4E).withOpacity(0.4),
+                  spacing: 40.0,
+                ),
+              ),
+            ),
+          ),
+
+
           GestureDetector(
             onDoubleTapDown: (details) => _createNewZone(details.localPosition),
             child: InteractiveViewer(
-              boundaryMargin: const EdgeInsets.all(1500),
-              minScale: 0.3,
-              maxScale: 2.0,
+              alignPanAxis: false,
+              clipBehavior: Clip.none,
+              boundaryMargin: const EdgeInsets.all(5000),
+              minScale: 0.1,
+              maxScale: 2.5,
               child: SizedBox(
-                width: 3000,
-                height: 3000,
+                width: 15000,
+                height: 15000,
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(painter: GridPainter()),
+                      child: CustomPaint(
+                        painter: DotGridPainter(
+                          // Спокойный, едва заметный цвет для точек
+                          dotColor: const Color(0xFF2F3E4E).withOpacity(0.25),
+                          spacing: 40.0,
+                        ),
+                      ),
                     ),
                     ..._zones.map((zone) {
                       final bool isEditing = zone['isEditing'] == true;
@@ -277,8 +306,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         child: GestureDetector(
                           onPanUpdate: isEditing ? null : (details) {
                             setState(() {
-                              zone['x'] += details.delta.dx;
-                              zone['y'] += details.delta.dy;
+                              double newX = (zone['x'] as num).toDouble() + details.delta.dx;
+                              double newY = (zone['y'] as num).toDouble() + details.delta.dy;
+                              zone['x'] = newX.clamp(50.0, 14000.0);
+                              zone['y'] = newY.clamp(50.0, 14000.0);
                             });
                           },
                           child: _buildZoneContainer(zone),
@@ -292,8 +323,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         child: GestureDetector(
                           onPanUpdate: (details) {
                             setState(() {
-                              chat['x'] = (chat['x'] as double) + details.delta.dx;
-                              chat['y'] = (chat['y'] as double) + details.delta.dy;
+                              double newX = (chat['x'] as num).toDouble() + details.delta.dx;
+                              double newY = (chat['y'] as num).toDouble() + details.delta.dy;
+                              chat['x'] = newX.clamp(50.0, 14500.0);
+                              chat['y'] = newY.clamp(50.0, 14500.0);
                             });
                           },
                           onTap: () {
@@ -321,7 +354,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                 Icon(Icons.blur_on_rounded, color: Color(0xFF2160FF), size: 26),
                 SizedBox(width: 12),
                 Text(
-                  'Пространство Matrix',
+                  'WinChat',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20, letterSpacing: 0.5),
                 ),
               ],
@@ -377,9 +410,23 @@ class _ChatsScreenState extends State<ChatsScreen> {
     );
   }
 
-  Widget _buildZoneContainer(Map<String, dynamic> zone) {
+      Widget _buildZoneContainer(Map<String, dynamic> zone) {
     final bool isEditing = zone['isEditing'] == true;
     final Color zoneColor = zone['color'] as Color;
+
+    final bool hasChatsInside = _spaceChats.any((chat) {
+      final double chatX = (chat['x'] as num).toDouble();
+      final double chatY = (chat['y'] as num).toDouble();
+      final double zoneX = (zone['x'] as num).toDouble();
+      final double zoneY = (zone['y'] as num).toDouble();
+      final double zoneW = (zone['w'] as num).toDouble();
+      final double zoneH = (zone['h'] as num).toDouble();
+
+      return chatX >= zoneX &&
+             chatX <= (zoneX + zoneW) &&
+             chatY >= zoneY &&
+             chatY <= (zoneY + zoneH);
+    });
 
     return Material(
       color: Colors.transparent,
@@ -392,24 +439,39 @@ class _ChatsScreenState extends State<ChatsScreen> {
           }
         },
         child: Container(
-          width: zone['w'] + (isEditing ? 50 : 0),
-          height: zone['h'] + (isEditing ? 50 : 0),
+          width: (zone['w'] as num).toDouble() + (isEditing ? 50 : 0),
+          height: (zone['h'] as num).toDouble() + (isEditing ? 50 : 0),
           color: Colors.transparent,
           child: Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                width: zone['w'],
-                height: zone['h'],
+                width: (zone['w'] as num).toDouble(),
+                height: (zone['h'] as num).toDouble(),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B).withOpacity(0.15),
+                  // Заливка берет выбранный цвет с минимальной прозрачностью (5%)
+                  color: zoneColor.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
-                    color: isEditing ? zoneColor : zoneColor.withOpacity(0.4),
-                    width: isEditing ? 2.5 : 2,
+                    // Если чат внутри — увеличиваем видимость родного цвета до 55%
+                    // Если пустая — оставляем базовые аккуратные 20%
+                    color: (hasChatsInside || isEditing)
+                        ? zoneColor.withOpacity(0.55)
+                        : zoneColor.withOpacity(0.2),
+                    width: isEditing ? 2.5 : 1.5,
                   ),
+                  boxShadow: [
+                    // Свечение тоже красится в выбранный цвет, но еле заметно (5% яркости)
+                    if (hasChatsInside || isEditing)
+                      BoxShadow(
+                        color: zoneColor.withOpacity(0.05),
+                        blurRadius: 10,
+                        spreadRadius: 0,
+                      ),
+                  ],
                 ),
+
                 child: Stack(
                   children: [
                     Align(
@@ -417,10 +479,22 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF24303F).withOpacity(0.6),
+                          color: const Color(0xFF1F2430).withOpacity(0.6),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(zone['title'], style: TextStyle(color: zoneColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: Text(
+                          zone['title'],
+                          style: TextStyle(
+                            // Если чат внутри или идет редактирование — делаем родной цвет текста ярким (85% видимости)
+                            // Если область пустая — оставляем его базовым и спокойным
+                            color: (hasChatsInside || isEditing)
+                                ? zoneColor.withOpacity(0.85)
+                                : zoneColor.withOpacity(0.5),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+
                       ),
                     ),
                     Positioned(
@@ -434,58 +508,14 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   ],
                 ),
               ),
-              if (isEditing) ...[
-                Positioned(
-                  right: 0,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() { zone['w'] = (zone['w'] + details.delta.dx).clamp(200.0, 900.0); });
-                    },
-                    child: _buildArrowIndicator(Icons.code_rounded, 0),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        final double oldW = zone['w'];
-                        zone['w'] = (zone['w'] - details.delta.dx).clamp(200.0, 900.0);
-                        zone['x'] += (oldW - zone['w']);
-                      });
-                    },
-                    child: _buildArrowIndicator(Icons.code_rounded, 0),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() { zone['h'] = (zone['h'] + details.delta.dy).clamp(200.0, 900.0); });
-                    },
-                    child: _buildArrowIndicator(Icons.code_rounded, 90),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        final double oldH = zone['h'];
-                        zone['h'] = (zone['h'] - details.delta.dy).clamp(200.0, 900.0);
-                        zone['y'] += (oldH - zone['h']);
-                      });
-                    },
-                    child: _buildArrowIndicator(Icons.code_rounded, 90),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
   }
+
+
 
   Widget _buildArrowIndicator(IconData icon, double degrees) {
     return Container(
@@ -516,3 +546,31 @@ class GridPainter extends CustomPainter {
   @override
     bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
   }
+
+class DotGridPainter extends CustomPainter {
+  final Color dotColor;
+  final double spacing;
+
+  DotGridPainter({required this.dotColor, this.spacing = 40.0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Используем максимально легкий стиль только для отрисовки точек
+    final paint = Paint()
+      ..color = dotColor
+      ..style = PaintingStyle.fill;
+
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        // Рисуем аккуратную маленькую точку радиусом 1.2 пикселя
+        canvas.drawCircle(Offset(x, y), 1.2, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+
