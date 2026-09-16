@@ -4,7 +4,8 @@ pragma solidity ^0.8.19;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ChainlinkClient} from "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol"; 
+import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
 
 contract InsurancePool is ERC20, Ownable {
     error InvalidAmount();
@@ -13,7 +14,7 @@ contract InsurancePool is ERC20, Ownable {
     error InvalidAddress();
 
     event TokensInvestorPurchased(address indexed buyer, uint256 Spent, uint256 tokensReceived);
-    event СurrencyInvestorPurchased(address indexed buyer, uint256 currencyReceived, uint256 tokensSpent);
+    event CurrencyInvestorPurchased(address indexed buyer, uint256 currencyReceived, uint256 tokensSpent);
 
     constructor(
         string memory _name,
@@ -34,7 +35,7 @@ contract InsurancePool is ERC20, Ownable {
 
     function payOutInsurance(address passenger, uint256 amount) external {
         if (msg.sender != insuranceCore) revert FailedSistem();
-        if (amount > token.balanceOf(address(this)), FailedSistem());
+        if (amount > token.balanceOf(address(this)) revert FailedSistem();
 
         require(token.transfer(passenger, amount), FailedSistem());
     }
@@ -60,7 +61,7 @@ contract InsurancePool is ERC20, Ownable {
 
         uint256 totalLSupply = totalSupply();
         uint256 currentPoolBalance = token.balanceOf(address(this));
-        uint256 amountToReturn:
+        uint256 amountToReturn;
 
         if (amount >= totalLSupply) revert InvalidToken();
 
@@ -94,10 +95,10 @@ contract InsurancePool is ERC20, Ownable {
 
         _burn(msg.sender, lpAmount);
 
-        bool success = token.transfer(msg.sender, amountToReturn):
+        bool success = token.transfer(msg.sender, amountToReturn;
         if (!success) revert FailedSistem();
 
-        emit СurrencyInvestorPurchased(msg.sender, amountToReturn, lpAmount);
+        emit CurrencyInvestorPurchased(msg.sender, amountToReturn, lpAmount);
 
         return amountToReturn;
     }
