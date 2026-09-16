@@ -16,6 +16,9 @@ contract InsurancePool is ERC20, Ownable {
     event TokensInvestorPurchased(address indexed buyer, uint256 Spent, uint256 tokensReceived);
     event CurrencyInvestorPurchased(address indexed buyer, uint256 currencyReceived, uint256 tokensSpent);
 
+    IERC20 public immutable token;
+    address public insuranceCore;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -24,9 +27,6 @@ contract InsurancePool is ERC20, Ownable {
     ) ERC20(_name, _symbol) Ownable(_initialOwner) {
         token = IERC20(_token);
     }
-
-    IERC20 public immutable token;
-    address public insuranceCore;
 
     function setInsuranceCore(address _core) external onlyOwner {
         require(_core != address(0), InvalidAddress());
@@ -50,7 +50,7 @@ contract InsurancePool is ERC20, Ownable {
             lpToMint = amount;
         } else {
             uint256 currentPoolBalance = token.balanceOf(address(this));
-            lpToMint = (amount * totalLpSupply) / currentPoolBalance;
+            lpToMint = (amount * totalLSupply) / currentPoolBalance;
         }
 
         return lpToMint;
@@ -200,7 +200,7 @@ contract FlightInsuranceCore is ChainlinkClient {
     function fulfillRequest(bytes32 _requestId, bytes32 _status) internal override {
         bytes32 policyId = oracleRequests[_requestId];
         Policy storage policy = policies[policyId];
-        if (!policy.isSettled) revert FailedSistem();
+        if (policy.isSettled) revert FailedSistem();
 
         uint256 flightStatus = uint256(_status);
 
