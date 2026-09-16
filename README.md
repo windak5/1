@@ -35,7 +35,7 @@ contract InsurancePool is ERC20, Ownable {
 
     function payOutInsurance(address passenger, uint256 amount) external {
         if (msg.sender != insuranceCore) revert FailedSistem();
-        if (amount > token.balanceOf(address(this)) revert FailedSistem();
+        if (amount > token.balanceOf(address(this))) revert FailedSistem();
 
         require(token.transfer(passenger, amount), FailedSistem());
     }
@@ -95,7 +95,7 @@ contract InsurancePool is ERC20, Ownable {
 
         _burn(msg.sender, lpAmount);
 
-        bool success = token.transfer(msg.sender, amountToReturn;
+        bool success = token.transfer(msg.sender, amountToReturn);
         if (!success) revert FailedSistem();
 
         emit CurrencyInvestorPurchased(msg.sender, amountToReturn, lpAmount);
@@ -157,11 +157,11 @@ contract FlightInsuranceCore is ChainlinkClient {
     }
 
     function buyPolicy(string calldata flightNumber, uint256 departureTime, uint256 premiumAmount) external returns(bytes32 policyId) {
-        if (departureTime <= block.timestamp + 1 day) revert InvalidTime();
+        if (departureTime <= block.timestamp + 1 days) revert InvalidTime();
         if (premiumAmount == 0) revert InvalidAmount();
 
-        bytes32 policyId = keccak256(abi.encodePacked(msg.sender, flightNumber, departureTime));
-        if (policies[policyId].passenger == address(0)) revert InvalidId();
+        policyId = keccak256(abi.encodePacked(msg.sender, flightNumber, departureTime));
+        if (policies[policyId].passenger != address(0)) revert InvalidId();
 
         uint256 payout = premiumAmount * 5;
 
@@ -185,8 +185,8 @@ contract FlightInsuranceCore is ChainlinkClient {
 
     function requestFlightStatus(bytes32 policyId) external {
         Policy storage policy = policies[policyId];
-        if (!policy.departureTime + 2 hours) revert InvalidTime();
-        if (!policy.isTriggered) revert FailedSistem();
+        if (block.timestamp <= policy.departureTime + 2 hours) revert InvalidTime();
+        if (policy.isTriggered) revert FailedSistem();
 
         Chainlink.Request memory req = buildChainlinkRequest(jobId, address(this), this.fulfillRequest.selector);
         req.add("get", "ТУТ_БУДЕТ_URL_API");
@@ -202,7 +202,7 @@ contract FlightInsuranceCore is ChainlinkClient {
         Policy storage policy = policies[policyId];
         if (!policy.isSettled) revert FailedSistem();
 
-        uint256 flightStatus = uint256(_status)
+        uint256 flightStatus = uint256(_status);
 
         if (flightStatus == 0) {
             require(token.transfer(address(insurancePool), policy.premiumAmount), FailedSistem());
